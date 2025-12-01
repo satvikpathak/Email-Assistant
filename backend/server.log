@@ -1,0 +1,166 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/satvik/Desktop/conass/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [105648] using WatchFiles
+INFO:     Started server process [105651]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:59522 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56806 - "GET /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39422 - "GET /auth/callback?code=4/0Ab32j92p47mmc9C6-RzvyHlZ3Zu337CnIp0zY6Wmo_WRYwMUIxo1f5TjdjzfQL297PgCuQ HTTP/1.1" 422 Unprocessable Content
+WARNING:  WatchFiles detected changes in 'app/services/gmail_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [105651]
+INFO:     Started server process [125926]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/services/gmail_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [125926]
+INFO:     Started server process [127382]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/services/gmail_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [127382]
+INFO:     Started server process [128190]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routers/auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [128190]
+INFO:     Started server process [129434]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routers/auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [129434]
+Process SpawnProcess-6:
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/multiprocessing/process.py", line 313, in _bootstrap
+    self.run()
+    ~~~~~~~~^^
+  File "/usr/lib/python3.13/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/satvik/Desktop/conass/backend/.venv/lib/python3.13/site-packages/uvicorn/_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+    ~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/satvik/Desktop/conass/backend/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 67, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+  File "/usr/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
+  File "/home/satvik/Desktop/conass/backend/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 71, in serve
+    await self._serve(sockets)
+  File "/home/satvik/Desktop/conass/backend/.venv/lib/python3.13/site-packages/uvicorn/server.py", line 78, in _serve
+    config.load()
+    ~~~~~~~~~~~^^
+  File "/home/satvik/Desktop/conass/backend/.venv/lib/python3.13/site-packages/uvicorn/config.py", line 439, in load
+    self.loaded_app = import_from_string(self.app)
+                      ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/home/satvik/Desktop/conass/backend/.venv/lib/python3.13/site-packages/uvicorn/importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1026, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/satvik/Desktop/conass/backend/main.py", line 7, in <module>
+    from app.routers import auth, chat
+  File "/home/satvik/Desktop/conass/backend/app/routers/auth.py", line 145
+    user_uuid = UUID(user_id)
+SyntaxError: expected 'except' or 'finally' block
+WARNING:  WatchFiles detected changes in 'app/routers/auth.py'. Reloading...
+INFO:     Started server process [130171]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routers/auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [130171]
+INFO:     Started server process [130716]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routers/auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [130716]
+INFO:     Started server process [130816]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routers/auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [130816]
+INFO:     Started server process [149078]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/routers/chat.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [149078]
+INFO:     Started server process [149168]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:42314 - "GET /auth/callback?code=4/0Ab32j92p47mmc9C6-RzvyHlZ3Zu337CnIp0zY6Wmo_WRYwMUIxo1f5TjdjzfQL297PgCuQ HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:45742 - "GET /auth/callback?code=4/0Ab32j92p47mmc9C6-RzvyHlZ3Zu337CnIp0zY6Wmo_WRYwMUIxo1f5TjdjzfQL297PgCuQ HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:44884 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:44890 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59084 - "GET /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42818 - "GET /auth/callback?code=4/0Ab32j91Kx2QQhJeeg1Xu8nYOBaFxXU69meuli792_QWqUefc8ml6jR4TpfxyfG9BClSvYA HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:47446 - "GET /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46262 - "GET /auth/callback?code=4/0Ab32j91lYG3Wc14lOcp6EzW_BJ8df0wV0Fv4NSkFS362RfqLRgUgJPSe425gtQMy_9DBTg HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:40206 - "GET /auth/callback?code=test_code HTTP/1.1" 500 Internal Server Error
+WARNING:  WatchFiles detected changes in 'app/routers/auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [149168]
+INFO:     Started server process [155591]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:59634 - "GET /auth/login HTTP/1.1" 200 OK
+Traceback (most recent call last):
+  File "/home/satvik/Desktop/conass/backend/app/routers/auth.py", line 124, in callback
+    user = await db.create_user(user_create)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/satvik/Desktop/conass/backend/app/core/database.py", line 57, in create_user
+    response = self.client.table("users").insert(data).execute()
+  File "/home/satvik/Desktop/conass/backend/.venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 53, in execute
+    raise APIError(dict(json_obj))
+postgrest.exceptions.APIError: {'message': 'new row violates row-level security policy for table "users"', 'code': '42501', 'hint': None, 'details': None}
+[AUTH] Fetching token with code: 4/0Ab32j91SKQT32Eee3...
+[AUTH] Got credentials, token: ya29.a0ATi6K2sQsSf1d...
+[AUTH] Verified user: satvikpathak007@gmail.com, google_id: 102225579895001278834
+[AUTH] Checking for existing user with google_id: 102225579895001278834
+[AUTH] Creating new user for: satvikpathak007@gmail.com
+[AUTH ERROR] Exception: APIError: {'message': 'new row violates row-level security policy for table "users"', 'code': '42501', 'hint': None, 'details': None}
+INFO:     127.0.0.1:43152 - "GET /auth/callback?code=4/0Ab32j91SKQT32Eee3OLE6d09zJx-6q4K8fHdIZFO3I2UQJNOJhoZavR_N0K40wvK2zwePg HTTP/1.1" 500 Internal Server Error
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [155591]
+INFO:     Stopping reloader process [105648]

@@ -1,0 +1,489 @@
+"""AI service using Google Gemini for email processing."""
+
+import re
+from typing import Any
+
+import google.generativeai as genai
+
+from app.core.config import settings
+
+# Configure Gemini
+genai.configure(api_key=settings.GEMINI_API_KEY)
+
+
+class AIService:
+    """Google Gemini AI service for email assistance."""
+
+    def __init__(self) -> None:
+        """Initialize Gemini model."""
+        # Use Gemini 1.5 Flash for fast, cost-effective processing
+        self.model = genai.GenerativeModel("gemini-2.5-flash")
+
+    def detect_intent(
+        self, user_message: str, conversation_history: list | None = None
+    ) -> dict[str, Any]:
+        """
+        Detect user intent from natural language message with enhanced NLP.
+
+        Returns:
+            Dict with intent type and extracted parameters
+        """
+        message_lower = user_message.lower()
+        conversation_history = conversation_history or []
+
+        # Check for confirmation keywords first - with metadata extraction
+        if (
+            any(
+                word in message_lower
+                for word in [
+                    "yes",
+                    "confirm",
+                    "do it",
+                    "go ahead",
+                    "send it",
+                    "delete it",
+                    "yeah",
+                    "yep",
+                    "sure",
+                ]
+            )
+            and conversation_history
+        ):
+            # Look back through last 3 messages for pending actions
+            for msg in reversed(conversation_history[-3:]):
+                # Handle both dict and Pydantic ChatMessage
+                if hasattr(msg, "role"):
+                    role = msg.role
+                    content = msg.content
+                    metadata = getattr(msg, "metadata", None)
+                elif isinstance(msg, dict):
+                    role = msg.get("role")
+                    content = msg.get("content", "")
+                    metadata = msg.get("metadata")
+                else:
+                    continue
+
+                # Only check assistant messages
+                if role != "assistant":
+                    continue
+
+                # Check if assistant was asking for delete confirmation
+                if "are you sure you want to delete" in content.lower():
+                    if metadata and isinstance(metadata, dict):
+                        email_id = metadata.get("email_id")
+                        if email_id:
+                            return {
+                                "intent": "delete_email",
+                                "email_id": email_id,
+                                "confirmed": True,
+                            }
+                    break
+
+                # Check if assistant was asking to send reply
+                if "would you like me to send" in content.lower():
+                    if metadata and isinstance(metadata, dict):
+                        return {"intent": "send_reply", "confirmed": True, **metadata}
+                    break
+
+        # Fetch/Show emails
+        if any(word in message_lower for word in ["show", "list", "fetch", "get", "display"]):
+            count = self._extract_number(user_message) or 5
+            query = self._extract_query(user_message)
+            return {"intent": "fetch_emails", "count": count, "query": query}
+
+        # Summarize
+        if any(word in message_lower for word in ["summarize", "summary"]):
+            count = self._extract_number(user_message) or 5
+            query = self._extract_query(user_message)
+            return {"intent": "fetch_emails", "count": count, "query": query}
+
+        # Reply generation
+        if any(word in message_lower for word in ["reply", "respond", "answer"]):
+            email_index = self._extract_email_index(user_message)
+            instruction = self._extract_instruction(user_message)
+            return {
+                "intent": "generate_reply",
+                "email_index": email_index,
+                "instruction": instruction,
+            }
+
+        # Delete
+        if any(word in message_lower for word in ["delete", "remove", "trash"]):
+            email_index = self._extract_email_index(user_message)
+            return {
+                "intent": "delete_email",
+                "email_index": email_index,
+                "confirmed": False,
+            }
+
+        # Categorize
+        if any(word in message_lower for word in ["categorize", "organize", "group", "category"]):
+            count = self._extract_number(user_message) or 20
+            return {"intent": "categorize", "count": count}
+
+        # Daily digest
+        if any(word in message_lower for word in ["digest", "today", "summary of the day"]):
+            return {"intent": "digest"}
+
+        # Default to general query
+        return {"intent": "query", "message": user_message}
+
+    def _extract_number(self, message: str) -> int | None:
+        """Extract number from message (e.g., 'last 5 emails' -> 5)."""
+        import re
+
+        match = re.search(r"\b(\d+)\b", message)
+        return int(match.group(1)) if match else None
+
+    def _extract_email_index(self, message: str) -> int | None:
+        """Extract email index (e.g., 'email #2' or 'second email' -> 1)."""
+        import re
+
+        # Check for #N or number N
+        match = re.search(r"#(\d+)|email\s+(\d+)|(\d+)\s*(?:st|nd|rd|th)", message.lower())
+        if match:
+            num = match.group(1) or match.group(2) or match.group(3)
+            return int(num) - 1  # Convert to 0-indexed
+
+        # Check for ordinal words
+        ordinals = {
+            "first": 0,
+            "second": 1,
+            "third": 2,
+            "fourth": 3,
+            "fifth": 4,
+            "last": -1,
+            "latest": 0,
+            "recent": 0,
+        }
+        for word, index in ordinals.items():
+            if word in message.lower():
+                return index
+
+        return None
+
+    def _extract_instruction(self, message: str) -> str:
+        """Extract custom instruction from reply command."""
+        # Look for phrases after 'saying' or 'that'
+        import re
+
+        match = re.search(r"(?:saying|that|tell them)\s+(.+)", message, re.IGNORECASE)
+        return match.group(1) if match else ""
+
+    def _extract_query(self, message: str) -> str:
+        """Extract Gmail query from user message."""
+        # Look for email-related filters
+        if "unread" in message.lower():
+            return "is:unread"
+        if "from" in message.lower():
+            # Extract email address if present
+            email_match = re.search(r"[\w\.-]+@[\w\.-]+", message)
+            if email_match:
+                return f"from:{email_match.group()}"
+        return ""
+
+    def _extract_target(self, message: str) -> str:
+        """Extract target identifier from delete command."""
+        # Look for email ID or keywords like "last", "this"
+        if "last" in message.lower():
+            return "last"
+        if "this" in message.lower():
+            return "current"
+        return ""
+
+    def summarize_emails(self, emails: list[dict[str, Any]]) -> str:
+        """
+        Generate a natural summary of emails using Gemini.
+
+        Args:
+            emails: List of email dictionaries
+
+        Returns:
+            AI-generated summary
+        """
+        if not emails:
+            return "You have no emails matching that criteria."
+
+        # Build concise email list for AI
+        email_summaries = []
+        for idx, email in enumerate(emails[:10], 1):  # Limit to 10 for token efficiency
+            email_summaries.append(
+                f"{idx}. From: {email['from']}\n"
+                f"   Subject: {email['subject']}\n"
+                f"   Snippet: {email['snippet'][:150]}..."
+            )
+
+        emails_text = "\n\n".join(email_summaries)
+
+        prompt = f"""You are an email assistant. Summarize these emails in a friendly, concise way:
+
+{emails_text}
+
+Provide a brief overview highlighting:
+- Total number of emails
+- Key senders
+- Main topics/subjects
+- Any urgent items
+
+Keep it conversational and under 150 words."""
+
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text
+
+        except Exception:
+            # Fallback to simple summary
+            return self._fallback_summary(emails)
+
+    def _fallback_summary(self, emails: list[dict[str, Any]]) -> str:
+        """Simple fallback summary if AI fails."""
+        max_emails_to_show = 5
+        summary = f"You have {len(emails)} email(s):\n\n"
+        for idx, email in enumerate(emails[:max_emails_to_show], 1):
+            summary += f"{idx}. {email['subject']} - From: {email['from']}\n"
+        if len(emails) > max_emails_to_show:
+            summary += f"\n...and {len(emails) - max_emails_to_show} more."
+        return summary
+
+    def generate_reply(self, original_email: dict[str, Any], user_instruction: str = "") -> str:
+        """
+        Generate an email reply using Gemini.
+
+        Args:
+            original_email: Original email data
+            user_instruction: Optional user guidance for the reply
+
+        Returns:
+            AI-generated reply text
+        """
+        email_context = f"""From: {original_email["from"]}
+Subject: {original_email["subject"]}
+Body: {original_email["body"][:1000]}"""  # Limit body for tokens
+
+        instruction = user_instruction or "Write a professional, helpful reply"
+
+        prompt = f"""You are an email assistant. Generate a reply to this email:
+
+{email_context}
+
+User instruction: {instruction}
+
+Write a clear, professional reply. Keep it concise (under 200 words). Do not include greetings like "Dear" or signatures, just the reply body."""
+
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+
+        except Exception as e:
+            raise ValueError(f"Failed to generate reply: {e!s}") from e
+
+    def process_natural_query(self, user_message: str, context: str = "") -> str:
+        """
+        Process a general natural language query about emails.
+
+        Args:
+            user_message: User's question or command
+            context: Additional context (e.g., current emails)
+
+        Returns:
+            AI-generated response
+        """
+        prompt = f"""You are a helpful email assistant. The user says:
+
+"{user_message}"
+
+Context:
+{context if context else "No specific context provided."}
+
+Respond conversationally and helpfully. If you need more information, ask clarifying questions. Keep your response under 100 words."""
+
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+
+        except Exception:
+            return "I'm having trouble processing that request. Could you try rephrasing it?"
+
+    def extract_email_address(self, text: str) -> str | None:
+        """Extract email address from text."""
+        match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", text)
+        return match.group() if match else None
+
+    def summarize_single_email(self, email: dict[str, Any]) -> str:
+        """
+        Generate a concise AI summary for a single email.
+
+        Args:
+            email: Email dictionary
+
+        Returns:
+            Brief AI-generated summary (1-2 sentences)
+        """
+        prompt = f"""Summarize this email in 1-2 sentences:
+
+From: {email["from"]}
+Subject: {email["subject"]}
+Content: {email["body"][:500]}
+
+Be concise and highlight the main point or request."""
+
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+        except Exception:
+            # Fallback to snippet
+            return email["snippet"][:100] + "..."
+
+    def create_email_list_response(self, emails: list[dict[str, Any]], query: str = "") -> str:
+        """Create a conversational response for email list."""
+        count = len(emails)
+        query_text = f" matching '{query}'" if query else ""
+
+        intro = f"I found {count} email{'s' if count != 1 else ''}{query_text}. Here they are:\n\n"
+
+        return (
+            intro
+            + "You can ask me to:\n- Reply to any email (e.g., 'reply to email #1')\n- Delete an email (e.g., 'delete email #2')\n- Get more details about any email"
+        )
+
+    def categorize_emails(self, emails: list[dict[str, Any]]) -> dict[str, list[dict]]:
+        """
+        Categorize emails using AI into Work, Personal, Promotions, Urgent.
+
+        Args:
+            emails: List of email dictionaries
+
+        Returns:
+            Dict with categories as keys and email lists as values
+        """
+        if not emails:
+            return {"Work": [], "Personal": [], "Promotions": [], "Urgent": []}
+
+        # Build prompt with email details
+        email_data = []
+        for idx, email in enumerate(emails[:20]):  # Limit for token efficiency
+            email_data.append(
+                f"{idx}: From={email['from']}, Subject={email['subject']}, Snippet={email['snippet'][:80]}"
+            )
+
+        emails_text = "\n".join(email_data)
+
+        prompt = f"""Categorize these emails into: Work, Personal, Promotions, or Urgent.
+Reply with ONLY a JSON object mapping email indices to categories.
+
+Emails:
+{emails_text}
+
+Format: {{"0": "Work", "1": "Personal", "2": "Promotions", "3": "Urgent"}}"""
+
+        try:
+            response = self.model.generate_content(prompt)
+            import json
+
+            # Extract JSON from response
+            text = response.text.strip()
+            # Find JSON in the response
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                json_str = text[start:end]
+                categorization = json.loads(json_str)
+
+                # Organize emails by category
+                categories = {
+                    "Work": [],
+                    "Personal": [],
+                    "Promotions": [],
+                    "Urgent": [],
+                }
+                for idx_str, category in categorization.items():
+                    idx = int(idx_str)
+                    if idx < len(emails) and category in categories:
+                        categories[category].append(emails[idx])
+
+                return categories
+        except Exception as e:
+            print(f"[AI] Categorization failed: {e}")
+
+        # Fallback: simple keyword-based categorization
+        return self._fallback_categorization(emails)
+
+    def _fallback_categorization(self, emails: list[dict[str, Any]]) -> dict[str, list[dict]]:
+        """Simple keyword-based categorization fallback."""
+        categories = {"Work": [], "Personal": [], "Promotions": [], "Urgent": []}
+
+        for email in emails:
+            text = (email["subject"] + " " + email["snippet"]).lower()
+
+            if any(word in text for word in ["urgent", "asap", "important", "critical"]):
+                categories["Urgent"].append(email)
+            elif any(word in text for word in ["unsubscribe", "offer", "deal", "sale", "discount"]):
+                categories["Promotions"].append(email)
+            elif any(word in text for word in ["meeting", "project", "deadline", "report"]):
+                categories["Work"].append(email)
+            else:
+                categories["Personal"].append(email)
+
+        return categories
+
+    def format_categorized_emails(self, categories: dict[str, list[dict]]) -> str:
+        """Format categorized emails into readable response."""
+        response = "📊 **Email Categories:**\n\n"
+
+        for category, emails in categories.items():
+            if emails:
+                icon = {
+                    "Work": "💼",
+                    "Personal": "👤",
+                    "Promotions": "🎁",
+                    "Urgent": "🚨",
+                }.get(category, "📧")
+                response += f"{icon} **{category}** ({len(emails)} emails)\n"
+                for idx, email in enumerate(emails[:3], 1):  # Show first 3
+                    response += f"  {idx}. {email['subject'][:50]}...\n"
+                if len(emails) > 3:
+                    response += f"  ...and {len(emails) - 3} more\n"
+                response += "\n"
+
+        return response
+
+    def generate_daily_digest(self, emails: list[dict[str, Any]]) -> str:
+        """
+        Generate a daily digest summary of emails.
+
+        Args:
+            emails: List of today's emails
+
+        Returns:
+            AI-generated digest with key insights and action items
+        """
+        if not emails:
+            return "📭 No emails today! Your inbox is clear."
+
+        # Build concise email list
+        email_summaries = []
+        for idx, email in enumerate(emails[:15], 1):
+            email_summaries.append(
+                f"{idx}. {email['from']} - {email['subject']}\n   {email['snippet'][:100]}..."
+            )
+
+        emails_text = "\n\n".join(email_summaries)
+
+        prompt = f"""You are an email assistant. Create a daily digest for these {len(emails)} emails:
+
+{emails_text}
+
+Provide:
+1. Brief overview of the day's emails
+2. Key highlights or important messages
+3. Suggested actions or follow-ups
+4. Any urgent items
+
+Keep it conversational and under 200 words."""
+
+        try:
+            response = self.model.generate_content(prompt)
+            return f"📅 **Daily Email Digest**\n\n{response.text.strip()}"
+        except Exception:
+            # Fallback
+            return f"📅 **Daily Email Digest**\n\nYou received {len(emails)} emails today. Check your inbox for important messages."
